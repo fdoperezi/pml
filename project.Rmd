@@ -1,0 +1,80 @@
+---
+title: "Practical Machine Learning"
+output: html_document
+---
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+**Question**
+
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. Using any of the other variables to predict with. 
+
+**Input data**
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+```{r results='hide', message=FALSE, warning=FALSE}
+# Load Package
+library(caret);library(kernlab);library(stats);library(randomForest);
+```
+
+```{r}
+#download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method="curl")
+#download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method="curl")
+
+trainData <- read.csv("pml-training.csv", header = TRUE)
+testData <- read.csv("pml-testing.csv", header = TRUE)
+dim(trainData);dim(testData);
+
+# Some preprocessing (cleaning)
+# Remove colummn, NA, blank
+trainData <- trainData[,-(1:7)]
+trainData <- trainData[,-which(colSums(is.na(trainData))>0)]
+trainData <- trainData[,-which(colSums(trainData=="")>0)]
+
+# Data splitting
+inTrain <- createDataPartition(y=trainData$classe, p=0.75, list=FALSE)
+training <- trainData[inTrain,]
+testing <- trainData[-inTrain,]
+dim(training); dim(testing)
+```
+
+**Features**
+```{r}
+vars <- colnames(trainData)[-(length(colnames(trainData)))]
+# PCA components to keep: 20
+preProc <- preProcess(training[vars],method="pca",pcaComp=20)
+trainPC <- predict(preProc,training[vars])
+trainPC$classe <- training$classe
+```
+
+**Algorithm**
+```{r cache=TRUE, warning=FALSE, eval=FALSE}
+# Fit a Model, Random Forest
+set.seed(2903)
+modelFit <- train(classe ~ .,method="rf",data=trainPC)
+```
+
+**Evaluation**
+Model Accuracy: 0.964
+
+```{r}
+modelFit
+# Final Model
+modelFit$finalModel
+```
+
+**Predictions**
+```{r}
+testPC <- predict(preProc, testData[vars])
+predictions <- predict(modelFit, testPC)
+predictions
+```
